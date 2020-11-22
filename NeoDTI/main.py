@@ -3,6 +3,8 @@ import torch
 import argparse
 import time
 import torch.optim as optim
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import average_precision_score
 # from sklearn.cross_validation import train_test_split,StratifiedKFold
 from model import NeoDTI
 
@@ -73,7 +75,7 @@ def train_step(model,drug_protein,drug_protein_norm,drug_human,drug_human_norm,d
     loss, acc, auc, aupr = 0.0, 0.0, 0.0, 0.0
     optimizer.zero_grad()
     # print(drug_drug)
-    loss_, acc_, auc_,aupr_ = model(torch.from_numpy(drug_protein).to(device),torch.from_numpy(drug_protein_norm).to(device),
+    loss_, acc_, auc_,aupr_,results = model(torch.from_numpy(drug_protein).to(device),torch.from_numpy(drug_protein_norm).to(device),
                                     torch.from_numpy(drug_human).to(device),torch.from_numpy(drug_human_norm).to(device),
                                     torch.from_numpy(drug_drug).to(device),torch.from_numpy(drug_drug_norm).to(device),
                                     torch.from_numpy(human_human).to(device),torch.from_numpy(human_human_norm).to(device),
@@ -95,7 +97,7 @@ def train_step(model,drug_protein,drug_protein_norm,drug_human,drug_human_norm,d
     acc = 0
     auc = 0
     aupr = 0
-    return loss, acc, auc, aupr
+    return loss, acc, auc, aupr,results
 
 def inference(model, X): # Test Process
     model.eval()
@@ -178,7 +180,7 @@ if __name__ == '__main__':
         start = time.time()
         # print("Hello World!")
         # print(drug_drug)
-        train_loss,train_acc,train_auc,train_aupr = train_step(
+        train_loss,train_acc,train_auc,train_aupr,results= train_step(
                                                     model,
                                                     drug_protein,drug_protein_norm,
                                                     drug_human,drug_human_norm,
@@ -192,7 +194,29 @@ if __name__ == '__main__':
                                                     protein_drug,protein_drug_norm,
                                                     drug_protein_mask,
                                                     optimizer)
-
+        if step % 1 == 0:
+            print('Step',step,'Total loss',train_loss)
+            pred_list = []
+            ground_truth = []
+            for ele in valid_set:
+                pred_list.append(results[ele[0],ele[1]])
+                ground_truth.append(ele[2])
+            valid_auc = roc_auc_score(ground_truth, pred_list)
+            valid_aupr = average_precision_score(ground_truth, pred_list)
+            # test_auc = 0
+            # test_aupr = 0
+            if valid_aupr >= best_valid_aupr:
+                best_valid_aupr = valid_aupr
+                best_valid_auc = valid_auc
+                pred_list = []
+                ground_truth = []
+                for ele in test_set:
+                    pred_list.append(results[ele[0],ele[1]])
+                    ground_truth.append(ele[2])
+                test_auc = roc_auc_score(ground_truth, pred_list)
+                test_aupr = average_precision_score(ground_truth, pred_list)
+            print('Valid auc aupr,', valid_auc, valid_aupr)
+            print('Test auc aupr', test_auc, test_aupr)
 
 
 
