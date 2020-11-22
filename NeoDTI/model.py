@@ -1,0 +1,117 @@
+import torch
+import torch.nn as nn
+from torch.nn.parameter import Parameter
+import torch.nn.functional as F
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import average_precision_score
+
+class NeoDTI(nn.Module):
+    def __init__(self, num_drug, num_human, num_virus, dim, drop_rate=0.5):
+        super(NeoDTI, self).__init__()
+        self.drug_embedding = Parameter(torch.normal(mean=torch.zeros([num_drug,dim]),std=0.1))
+        self.human_embedding = Parameter(torch.normal(mean=torch.zeros([num_human,dim]),std=0.1))
+        self.virus_embedding = Parameter(torch.normal(mean=torch.zeros([num_virus,dim]),std=0.1))
+        self.W0 = Parameter(torch.normal(mean=torch.zeros([2*dim,dim]),std=0.1))
+        self.b0 = Parameter(torch.normal(mean=torch.zeros([dim]),std=0.1))
+        self.dd_layer = nn.Sequential(
+            nn.Linear(dim,dim,bias=True),
+            nn.ReLU()
+        )
+        self.dv_layer = nn.Sequential(
+            nn.Linear(dim,dim,bias=True),
+            nn.ReLU()
+        )
+        self.dh_layer = nn.Sequential(
+            nn.Linear(dim,dim,bias=True),
+            nn.ReLU()
+        )
+        self.hd_layer = nn.Sequential(
+            nn.Linear(dim,dim,bias=True),
+            nn.ReLU()
+        )
+        self.hv_layer = nn.Sequential(
+            nn.Linear(dim,dim,bias=True),
+            nn.ReLU()
+        )
+        self.hh_layer = nn.Sequential(
+            nn.Linear(dim,dim,bias=True),
+            nn.ReLU()
+        )
+        self.hhi_layer = nn.Sequential(
+            nn.Linear(dim,dim,bias=True),
+            nn.ReLU()
+        )
+        self.vd_layer = nn.Sequential(
+            nn.Linear(dim,dim,bias=True),
+            nn.ReLU()
+        )
+        self.vh_layer = nn.Sequential(
+            nn.Linear(dim,dim,bias=True),
+            nn.ReLU()
+        )
+        self.vv_layer = nn.Sequential(
+            nn.Linear(dim,dim,bias=True),
+            nn.ReLU()
+        )
+
+    def bi_layer(self,x0,x1,sym,dim_pred):
+        torch.set_default_tensor_type(torch.DoubleTensor)
+        if sym == False:
+            W0p = Parameter(torch.normal(mean=torch.zeros([x0.shape[1],dim_pred]),std=0.1))
+            W1p = Parameter(torch.normal(mean=torch.zeros([x1.shape[1],dim_pred]),std=0.1))
+            # print(W0p)
+            # print(W1p)
+            return torch.matmul(torch.matmul(x0, W0p), 
+                                torch.matmul(x1, W1p).T)
+        else:
+            W0p = Parameter(torch.normal(mean=torch.zeros([x0.shape[1],dim_pred]),std=0.1))
+            # print(W0p)
+            return torch.matmul(torch.matmul(x0, W0p), 
+                                torch.matmul(x1, W0p).T)
+
+    def forward(self,drug_protein,drug_protein_norm,drug_human,drug_human_norm,drug_drug,drug_drug_norm,human_human,human_human_norm,
+    human_human_integration,human_human_integration_norm,human_drug,human_drug_norm,human_virus,human_virus_norm,virus_virus,virus_virus_norm,
+    virus_human,virus_human_norm,protein_drug,protein_drug_norm,drug_protein_mask): 
+        # print("Hello world!")
+        self.drug_representation = F.normalize(F.relu(torch.matmul(
+            torch.cat([torch.matmul(drug_drug_norm, self.dd_layer(self.drug_embedding)) + \
+            torch.matmul(drug_protein_norm, self.dv_layer(self.virus_embedding)) + \
+            torch.matmul(drug_human_norm, self.dh_layer(self.human_embedding)),\
+            self.drug_embedding], axis=1), self.W0)+self.b0),dim=1)
+        # print(self.drug_representation)
+        
+        self.virus_representation  = F.normalize(F.relu(torch.matmul(
+            torch.cat([torch.matmul(virus_virus_norm, self.vv_layer(self.virus_embedding)) + \
+            torch.matmul(protein_drug_norm, self.vd_layer(self.drug_embedding)) + \
+            torch.matmul(virus_human_norm, self.vh_layer(self.human_embedding)),\
+            self.virus_embedding], axis=1), self.W0)+self.b0),dim=1)
+
+        # print(virus_vector1.shape)
+        self.human_representation = F.normalize(F.relu(torch.matmul(
+            torch.cat([torch.matmul(human_human_norm, self.hh_layer(self.human_embedding)) + \
+            torch.matmul(human_human_integration_norm, self.hhi_layer(self.human_embedding)) + \
+            torch.matmul(human_drug_norm, self.hd_layer(self.drug_embedding)) + \
+            torch.matmul(human_virus_norm, self.hv_layer(self.virus_embedding)),\
+            self.human_embedding], axis=1), self.W0)+self.b0),dim=1)
+        # print(human_vector1.shape)
+        # print("Hi")
+
+        self.drug_drug_reconstruct = self.bi_layer(self.drug_representation,self.drug_representation, sym=True, dim_pred=512)
+        self.drug_drug_reconstruct_loss = torch.sum(torch.multiply((self.drug_drug_reconstruct- drug_drug), (self.drug_drug_reconstruct-drug_drug)))
+
+        print(self.drug_drug_reconstruct)
+        print(drug_drug)
+        self.drug_protein_reconstruct = self.bi_layer(self.drug_representation,self.virus_representation, sym=False, dim_pred=512)
+        tmp = torch.multiply(drug_protein_mask, (self.drug_protein_reconstruct-drug_protein))
+        self.drug_protein_reconstruct_loss = torch.sum(torch.multiply(tmp, tmp))
+
+        print(self.drug_protein_reconstruct)
+        print(drug_protein)
+        print(self.drug_drug_reconstruct_loss)
+        print(self.drug_protein_reconstruct_loss)
+        loss = self.drug_protein_reconstruct_loss + self.drug_drug_reconstruct_loss
+        return loss,0,0,0
+
+
+
+
