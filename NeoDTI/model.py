@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn.parameter import Parameter
+import torch.nn.init as init
 import torch.nn.functional as F
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import average_precision_score
@@ -8,11 +9,22 @@ from sklearn.metrics import average_precision_score
 class NeoDTI(nn.Module):
     def __init__(self, num_drug, num_human, num_virus, dim, drop_rate=0.5):
         super(NeoDTI, self).__init__()
-        self.drug_embedding = Parameter(torch.normal(mean=torch.zeros([num_drug,dim]),std=0.1))
-        self.human_embedding = Parameter(torch.normal(mean=torch.zeros([num_human,dim]),std=0.1))
-        self.virus_embedding = Parameter(torch.normal(mean=torch.zeros([num_virus,dim]),std=0.1))
-        self.W0 = Parameter(torch.normal(mean=torch.zeros([2*dim,dim]),std=0.1))
-        self.b0 = Parameter(torch.normal(mean=torch.zeros([dim]),std=0.1))
+        # self.drug_embedding = Parameter(torch.normal(mean=torch.zeros([num_drug,dim]),std=0.1))
+        self.drug_embedding = Parameter(torch.zeros((num_drug,dim)))
+        # self.human_embedding = Parameter(torch.normal(mean=torch.zeros([num_human,dim]),std=0.1))
+        self.human_embedding = Parameter(torch.zeros((num_human,dim)))
+        # self.virus_embedding = Parameter(torch.normal(mean=torch.zeros([num_virus,dim]),std=0.1))
+        self.virus_embedding = Parameter(torch.zeros((num_virus,dim)))
+        # self.W0 = Parameter(torch.normal(mean=torch.zeros([2*dim,dim]),std=0.1))
+        self.W0 = Parameter(torch.zeros((2*dim,dim)))
+        # self.b0 = Parameter(torch.normal(mean=torch.zeros([dim]),std=0.1))
+        self.b0 = Parameter(torch.zeros([dim]))
+        init.xavier_normal_(self.drug_embedding)
+        init.xavier_normal_(self.human_embedding)
+        init.xavier_normal_(self.virus_embedding)
+        init.xavier_normal_(self.W0)
+        # init.xavier_normal_(self.b0)
+
         self.dd_layer = nn.Sequential(
             nn.Linear(dim,dim,bias=True),
             nn.ReLU()
@@ -69,6 +81,7 @@ class NeoDTI(nn.Module):
             return torch.matmul(torch.matmul(x0, W0p), 
                                 torch.matmul(x1, W0p).T)
 
+
     def forward(self,drug_protein,drug_protein_norm,drug_human,drug_human_norm,drug_drug,drug_drug_norm,human_human,human_human_norm,
     human_human_integration,human_human_integration_norm,human_drug,human_drug_norm,human_virus,human_virus_norm,virus_virus,virus_virus_norm,
     virus_human,virus_human_norm,protein_drug,protein_drug_norm,drug_protein_mask): 
@@ -99,17 +112,29 @@ class NeoDTI(nn.Module):
         self.drug_drug_reconstruct = self.bi_layer(self.drug_representation,self.drug_representation, sym=True, dim_pred=512)
         self.drug_drug_reconstruct_loss = torch.sum(torch.multiply((self.drug_drug_reconstruct- drug_drug), (self.drug_drug_reconstruct-drug_drug)))
 
-        print(self.drug_drug_reconstruct)
-        print(drug_drug)
+        self.virus_virus_reconstruct = self.bi_layer(self.virus_representation,self.virus_representation, sym=True, dim_pred=512)
+        self.virus_virus_reconstruct_loss = torch.sum(torch.multiply((self.virus_virus_reconstruct- virus_virus), (self.virus_virus_reconstruct-virus_virus)))
+
+        self.human_human_reconstruct = self.bi_layer(self.human_representation,self.human_representation, sym=True, dim_pred=512)
+        self.human_human_reconstruct_loss = torch.sum(torch.multiply((self.human_human_reconstruct-human_human),(self.human_human_reconstruct-human_human)))
+
+
+        # print(self.drug_drug_reconstruct)
+        # print(drug_drug)
         self.drug_protein_reconstruct = self.bi_layer(self.drug_representation,self.virus_representation, sym=False, dim_pred=512)
         tmp = torch.multiply(drug_protein_mask, (self.drug_protein_reconstruct-drug_protein))
         self.drug_protein_reconstruct_loss = torch.sum(torch.multiply(tmp, tmp))
 
-        print(self.drug_protein_reconstruct)
-        print(drug_protein)
+        # print(self.drug_embedding)
+        # print(self.drug_protein_reconstruct)
+        # print(drug_protein)
         print(self.drug_drug_reconstruct_loss)
+        print(self.virus_virus_reconstruct_loss)
+        print(self.human_human_reconstruct_loss)
         print(self.drug_protein_reconstruct_loss)
-        loss = self.drug_protein_reconstruct_loss + self.drug_drug_reconstruct_loss
+        loss = self.drug_protein_reconstruct_loss + self.virus_virus_reconstruct_loss + self.human_human_reconstruct_loss + self.drug_drug_reconstruct_loss
+        print("Total Loss:")
+        print(loss.item())
         return loss,0,0,0
 
 
