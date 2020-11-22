@@ -133,7 +133,7 @@ class NeoDTI(nn.Module):
         print(self.virus_virus_reconstruct_loss)
         print(self.human_human_reconstruct_loss)
         print(self.drug_protein_reconstruct_loss)
-        loss = self.drug_protein_reconstruct_loss + self.virus_virus_reconstruct_loss + self.human_human_reconstruct_loss + self.drug_drug_reconstruct_loss
+        loss = self.drug_protein_reconstruct_loss + 0.1*(self.virus_virus_reconstruct_loss + self.human_human_reconstruct_loss + self.drug_drug_reconstruct_loss)
         print("Total Loss:")
         print(loss.item())
         return loss,0,0,0,self.drug_protein_reconstruct
