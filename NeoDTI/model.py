@@ -67,16 +67,17 @@ class NeoDTI(nn.Module):
         )
 
     def bi_layer(self,x0,x1,sym,dim_pred):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         torch.set_default_tensor_type(torch.DoubleTensor)
         if sym == False:
-            W0p = Parameter(torch.normal(mean=torch.zeros([x0.shape[1],dim_pred]),std=0.1))
-            W1p = Parameter(torch.normal(mean=torch.zeros([x1.shape[1],dim_pred]),std=0.1))
+            W0p = Parameter(torch.normal(mean=torch.zeros([x0.shape[1],dim_pred]),std=0.1)).to(device)
+            W1p = Parameter(torch.normal(mean=torch.zeros([x1.shape[1],dim_pred]),std=0.1)).to(device)
             # print(W0p)
             # print(W1p)
             return torch.matmul(torch.matmul(x0, W0p), 
                                 torch.matmul(x1, W1p).T)
         else:
-            W0p = Parameter(torch.normal(mean=torch.zeros([x0.shape[1],dim_pred]),std=0.1))
+            W0p = Parameter(torch.normal(mean=torch.zeros([x0.shape[1],dim_pred]),std=0.1)).to(device)
             # print(W0p)
             return torch.matmul(torch.matmul(x0, W0p), 
                                 torch.matmul(x1, W0p).T)
