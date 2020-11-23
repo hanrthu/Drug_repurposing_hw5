@@ -6,7 +6,8 @@ import torch.optim as optim
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import average_precision_score
 # from sklearn.cross_validation import train_test_split,StratifiedKFold
-from model import NeoDTI
+from NeoDTI import NeoDTI
+from HNM import HNM
 
 def row_normalize(a_matrix, substract_self_loop):
     # b_matrix = np.zeros((a_matrix.shape[0],a_matrix.shape[1]))
@@ -111,6 +112,8 @@ if __name__ == '__main__':
     parser.add_argument('--numsteps',type=int,default=2000,help='Num of epochs')
     parser.add_argument('--learning_rate',type=int,default=0.01,help='Learning rate')
     parser.add_argument('--ratio',type=int,default=1,help='Negative-Positive ratio')
+    parser.add_argument('--model',type=str,default='NeoDTI',help='Choose a model')
+    parser.add_argument('--alpha',type=float,default=0.9,help='HNM alpha')
     args = parser.parse_args()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Using Device: %s" %(device))
@@ -156,11 +159,18 @@ if __name__ == '__main__':
     virus_human_norm = row_normalize(virus_human,False)
     virus_drug_norm = row_normalize(virus_drug,False)
     #Model的定义
-    dim = args.dim
-    model = NeoDTI(num_drug,num_human,num_virus,dim)
-    model = model.double()
-    model.to(device)
-    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+    if args.model == 'NeoDTI':
+        print('Using Model:\tNeoDTI')
+        dim = args.dim
+        model = NeoDTI(num_drug,num_human,num_virus,dim)
+        model = model.double()
+        model.to(device)
+        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+    if args.model == 'HNM':
+        print('Using Model:\tHNM')
+        model = HNM(args.numsteps,args.alpha)
+        model = model.double()
+        model.to(device)
 
     #训练集和测试集的划分
     train_set,valid_set,test_set = dataset_split(drug_virus)
@@ -176,24 +186,69 @@ if __name__ == '__main__':
     protein_drug = drug_protein.T
     drug_protein_norm = row_normalize(drug_protein,False)
     protein_drug_norm = row_normalize(protein_drug,False)
-    for step in range(args.numsteps):
-        start = time.time()
-        # print("Hello World!")
-        # print(drug_drug)
-        train_loss,train_acc,train_auc,train_aupr,results= train_step(
-                                                    model,
-                                                    drug_protein,drug_protein_norm,
-                                                    drug_human,drug_human_norm,
-                                                    drug_drug,drug_drug_norm,
-                                                    human_human,human_human_norm,
-                                                    human_human_integration,human_human_integration_norm,
-                                                    human_drug,human_drug_norm,
-                                                    human_virus,human_virus_norm,
-                                                    virus_virus,virus_virus_norm,
-                                                    virus_human,virus_human_norm,
-                                                    protein_drug,protein_drug_norm,
-                                                    drug_protein_mask,
-                                                    optimizer)
+    if args.model == 'NeoDTI':
+        for step in range(args.numsteps):
+            start = time.time()
+            # print("Hello World!")
+            # print(drug_drug)
+            train_loss,train_acc,train_auc,train_aupr,results= train_step(
+                                                        model,
+                                                        drug_protein,drug_protein_norm,
+                                                        drug_human,drug_human_norm,
+                                                        drug_drug,drug_drug_norm,
+                                                        human_human,human_human_norm,
+                                                        human_human_integration,human_human_integration_norm,
+                                                        human_drug,human_drug_norm,
+                                                        human_virus,human_virus_norm,
+                                                        virus_virus,virus_virus_norm,
+                                                        virus_human,virus_human_norm,
+                                                        protein_drug,protein_drug_norm,
+                                                        drug_protein_mask,
+                                                        optimizer)
+            train_list = []
+            train_truth = []
+            for ele in train_set:
+                train_list.append(results[ele[0],ele[1]])
+                train_truth.append(ele[2])
+            train_auc = roc_auc_score(train_truth,train_list)
+            train_aupr = average_precision_score(train_truth, train_list)
+            print('Train auc aupr', train_auc,train_aupr)
+
+            if step % 1 == 0:
+                print('Step',step,'Total loss',train_loss)
+                pred_list = []
+                ground_truth = []
+                for ele in valid_set:
+                    pred_list.append(results[ele[0],ele[1]])
+                    ground_truth.append(ele[2])
+                valid_auc = roc_auc_score(ground_truth, pred_list)
+                valid_aupr = average_precision_score(ground_truth, pred_list)
+                # test_auc = 0
+                # test_aupr = 0
+                if valid_aupr >= best_valid_aupr:
+                    best_valid_aupr = valid_aupr
+                    best_valid_auc = valid_auc
+                    pred_list = []
+                    ground_truth = []
+                    for ele in test_set:
+                        pred_list.append(results[ele[0],ele[1]])
+                        ground_truth.append(ele[2])
+                    test_auc = roc_auc_score(ground_truth, pred_list)
+                    test_aupr = average_precision_score(ground_truth, pred_list)
+                print('Valid auc aupr,', valid_auc, valid_aupr)
+                print('Test auc aupr', test_auc, test_aupr)
+    if args.model == 'HNM':
+        results = model(torch.from_numpy(drug_protein).to(device),torch.from_numpy(drug_protein_norm).to(device),
+                                torch.from_numpy(drug_human).to(device),torch.from_numpy(drug_human_norm).to(device),
+                                torch.from_numpy(drug_drug).to(device),torch.from_numpy(drug_drug_norm).to(device),
+                                torch.from_numpy(human_human).to(device),torch.from_numpy(human_human_norm).to(device),
+                                torch.from_numpy(human_human_integration).to(device),torch.from_numpy(human_human_integration_norm).to(device),
+                                torch.from_numpy(human_drug).to(device),torch.from_numpy(human_drug_norm).to(device),
+                                torch.from_numpy(human_virus).to(device),torch.from_numpy(human_virus_norm).to(device),
+                                torch.from_numpy(virus_virus).to(device),torch.from_numpy(virus_virus_norm).to(device),
+                                torch.from_numpy(virus_human).to(device),torch.from_numpy(virus_human_norm).to(device),
+                                torch.from_numpy(protein_drug).to(device),torch.from_numpy(protein_drug_norm).to(device),
+                                torch.from_numpy(drug_protein_mask).to(device))
         train_list = []
         train_truth = []
         for ele in train_set:
@@ -202,32 +257,26 @@ if __name__ == '__main__':
         train_auc = roc_auc_score(train_truth,train_list)
         train_aupr = average_precision_score(train_truth, train_list)
         print('Train auc aupr', train_auc,train_aupr)
-
-        if step % 1 == 0:
-            print('Step',step,'Total loss',train_loss)
+        pred_list = []
+        ground_truth = []
+        for ele in valid_set:
+            pred_list.append(results[ele[0],ele[1]])
+            ground_truth.append(ele[2])
+        valid_auc = roc_auc_score(ground_truth, pred_list)
+        valid_aupr = average_precision_score(ground_truth, pred_list)
+        # test_auc = 0
+        # test_aupr = 0
+        if valid_aupr >= best_valid_aupr:
+            best_valid_aupr = valid_aupr
+            best_valid_auc = valid_auc
             pred_list = []
             ground_truth = []
-            for ele in valid_set:
+            for ele in test_set:
                 pred_list.append(results[ele[0],ele[1]])
                 ground_truth.append(ele[2])
-            valid_auc = roc_auc_score(ground_truth, pred_list)
-            valid_aupr = average_precision_score(ground_truth, pred_list)
-            # test_auc = 0
-            # test_aupr = 0
-            if valid_aupr >= best_valid_aupr:
-                best_valid_aupr = valid_aupr
-                best_valid_auc = valid_auc
-                pred_list = []
-                ground_truth = []
-                for ele in test_set:
-                    pred_list.append(results[ele[0],ele[1]])
-                    ground_truth.append(ele[2])
-                test_auc = roc_auc_score(ground_truth, pred_list)
-                test_aupr = average_precision_score(ground_truth, pred_list)
-            print('Valid auc aupr,', valid_auc, valid_aupr)
-            print('Test auc aupr', test_auc, test_aupr)
+            test_auc = roc_auc_score(ground_truth, pred_list)
+            test_aupr = average_precision_score(ground_truth, pred_list)
+        print('Valid auc aupr,', valid_auc, valid_aupr)
+        print('Test auc aupr', test_auc, test_aupr)
 
 
-
-    # print(drug_num,virus_num,human_num)
-    # print(VHI_net[0])
