@@ -7,7 +7,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import average_precision_score
 
 class NeoDTI(nn.Module):
-    def __init__(self, num_drug, num_human, num_virus, dim, drop_rate=0.5):
+    def __init__(self, num_drug, num_human, num_virus, dim):
         super(NeoDTI, self).__init__()
         self.drug_embedding = Parameter(torch.normal(mean=torch.zeros([num_drug,dim]),std=0.1))
         # self.drug_embedding = Parameter(torch.zeros((num_drug,dim)))

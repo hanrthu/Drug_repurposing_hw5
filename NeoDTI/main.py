@@ -194,6 +194,15 @@ if __name__ == '__main__':
                                                     protein_drug,protein_drug_norm,
                                                     drug_protein_mask,
                                                     optimizer)
+        train_list = []
+        train_truth = []
+        for ele in train_set:
+            train_list.append(results[ele[0],ele[1]])
+            train_truth.append(ele[2])
+        train_auc = roc_auc_score(train_truth,train_list)
+        train_aupr = average_precision_score(train_truth, train_list)
+        print('Train auc aupr', train_auc,train_aupr)
+
         if step % 1 == 0:
             print('Step',step,'Total loss',train_loss)
             pred_list = []
