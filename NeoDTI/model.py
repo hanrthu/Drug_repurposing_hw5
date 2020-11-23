@@ -119,13 +119,22 @@ class NeoDTI(nn.Module):
         self.human_human_reconstruct = self.bi_layer(self.human_representation,self.human_representation, sym=True, dim_pred=512)
         self.human_human_reconstruct_loss = torch.sum(torch.multiply((self.human_human_reconstruct-human_human),(self.human_human_reconstruct-human_human)))
 
+        self.human_human_in_reconstruct = self.bi_layer(self.human_representation,self.human_representation, sym=True, dim_pred=512)
+        self.human_human_in_reconstruct_loss = torch.sum(torch.multiply((self.human_human_in_reconstruct-human_human_integration),(self.human_human_in_reconstruct-human_human_integration)))
 
+        self.virus_human_reconstruct = self.bi_layer(self.virus_representation,self.human_representation,sym=False,dim_pred=512)
+        self.virus_human_reconstruct_loss = torch.sum(torch.multiply((self.virus_human_reconstruct - virus_human),(self.virus_human_reconstruct - virus_human)))
+
+        self.drug_human_reconstruct = self.bi_layer(self.drug_representation,self.human_representation,sym=False,dim_pred=512)
+        self.drug_human_reconstruct_loss = torch.sum(torch.multiply((self.drug_human_reconstruct - drug_human),(self.drug_human_reconstruct - drug_human)))
         # print(self.drug_drug_reconstruct)
         # print(drug_drug)
         self.drug_protein_reconstruct = self.bi_layer(self.drug_representation,self.virus_representation, sym=False, dim_pred=512)
         tmp = torch.multiply(drug_protein_mask, (self.drug_protein_reconstruct-drug_protein))
         self.drug_protein_reconstruct_loss = torch.sum(torch.multiply(tmp, tmp))
 
+
+        
         # print(self.drug_embedding)
         # print(self.drug_protein_reconstruct)
         # print(drug_protein)
@@ -133,7 +142,10 @@ class NeoDTI(nn.Module):
         print(self.virus_virus_reconstruct_loss)
         print(self.human_human_reconstruct_loss)
         print(self.drug_protein_reconstruct_loss)
-        loss = self.drug_protein_reconstruct_loss + 0.05*(self.virus_virus_reconstruct_loss + self.human_human_reconstruct_loss + self.drug_drug_reconstruct_loss)
+        loss = self.drug_protein_reconstruct_loss + 0.1*(self.virus_virus_reconstruct_loss + \
+            self.human_human_reconstruct_loss + self.drug_drug_reconstruct_loss + \
+            self.human_human_in_reconstruct_loss + self.virus_human_reconstruct_loss +\
+            self.drug_human_reconstruct_loss)
         print("Total Loss:")
         print(loss.item())
         return loss,0,0,0,self.drug_protein_reconstruct
