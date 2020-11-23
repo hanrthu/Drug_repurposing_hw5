@@ -138,16 +138,16 @@ class NeoDTI(nn.Module):
         # print(self.drug_embedding)
         # print(self.drug_protein_reconstruct)
         # print(drug_protein)
-        print(self.drug_drug_reconstruct_loss / drug_drug.shape[0])
-        print(self.virus_virus_reconstruct_loss / virus_virus.shape[0])
-        print(self.human_human_reconstruct_loss / human_human.shape[0])
-        print(self.drug_protein_reconstruct_loss)
+        # print(self.drug_drug_reconstruct_loss / drug_drug.shape[0])
+        # print(self.virus_virus_reconstruct_loss / virus_virus.shape[0])
+        # print(self.human_human_reconstruct_loss / human_human.shape[0])
+        # print(self.drug_protein_reconstruct_loss)
         loss = self.drug_protein_reconstruct_loss + 0.1* (self.virus_virus_reconstruct_loss / virus_virus.shape[0] + \
             self.human_human_reconstruct_loss / human_human.shape[0] + self.drug_drug_reconstruct_loss / drug_drug.shape[0] + \
             self.human_human_in_reconstruct_loss / human_human.shape[0] + self.virus_human_reconstruct_loss / virus_human.shape[0]+\
             self.drug_human_reconstruct_loss / drug_human.shape[0])
-        print("Total Loss:")
-        print(loss.item())
+        # print("Total Loss:")
+        # print(loss.item())
         return loss,0,0,0,self.drug_protein_reconstruct
 
 
