@@ -10,7 +10,7 @@ class HNM(nn.Module):
     def forward(self,drug_protein,drug_protein_norm,drug_human,drug_human_norm,drug_drug,drug_drug_norm,human_human,human_human_norm,
     human_human_integration,human_human_integration_norm,human_drug,human_drug_norm,human_virus,human_virus_norm,virus_virus,virus_virus_norm,
     virus_human,virus_human_norm,protein_drug,protein_drug_norm,drug_protein_mask,W_hd,W_dv):
-    
+
         W_hd = W_hd.clone()
         W_dd = drug_drug_norm
         W_dv = W_dv.clone()
@@ -22,4 +22,3 @@ class HNM(nn.Module):
         tmp = torch.multiply(drug_protein_mask, (W_dv-drug_protein_norm))
         train_loss = torch.sum(torch.multiply(tmp, tmp))
         return train_loss,W_hd_new,W_dv_new
-            

@@ -71,10 +71,10 @@ def train_step(model,drug_protein,drug_protein_norm,drug_human,drug_human_norm,d
     virus_human,virus_human_norm,protein_drug,protein_drug_norm,drug_protein_mask,optimizer): # Training Process
 	
     model.train()
-    loss, acc, auc, aupr = 0.0, 0.0, 0.0, 0.0
+    loss = 0.0
     optimizer.zero_grad()
     # print(drug_drug)
-    loss_, acc_, auc_,aupr_,results = model(torch.from_numpy(drug_protein).to(device),torch.from_numpy(drug_protein_norm).to(device),
+    loss_,results = model(torch.from_numpy(drug_protein).to(device),torch.from_numpy(drug_protein_norm).to(device),
                                     torch.from_numpy(drug_human).to(device),torch.from_numpy(drug_human_norm).to(device),
                                     torch.from_numpy(drug_drug).to(device),torch.from_numpy(drug_drug_norm).to(device),
                                     torch.from_numpy(human_human).to(device),torch.from_numpy(human_human_norm).to(device),
@@ -90,13 +90,7 @@ def train_step(model,drug_protein,drug_protein_norm,drug_human,drug_human_norm,d
     optimizer.step()
 
     loss = loss_.cpu().data.numpy()
-    # acc = acc_.cpu().data.numpy()
-    # auc = auc_.cpu().data.numpy()
-    # aupr = aupr_.cpu().data.numpy()
-    acc = 0
-    auc = 0
-    aupr = 0
-    return loss, acc, auc, aupr,results
+    return loss, results
 
 def inference(model, X): # Test Process
     model.eval()
@@ -183,10 +177,9 @@ if __name__ == '__main__':
 
     k_fold_auc = []
     k_fold_aupr = []
+    #10-fold cross-validation
     for train_index, test_index in kf:
         #训练并测试
-        # print(train_index)
-        # print(test_index)
         count += 1
         print("Fold ",count)
         train_set = np.array(data_set)[train_index]
@@ -207,23 +200,22 @@ if __name__ == '__main__':
         W_dv = torch.from_numpy(drug_protein_norm*drug_protein_mask).clone().to(device)
         for step in range(args.numsteps):
             start = time.time()
-            # print("Hello World!")
-            # print(drug_drug)
+            #根据模型进行训练
             if args.model == 'NeoDTI':
-                train_loss,train_acc,train_auc,train_aupr,results= train_step(
-                                                            model,
-                                                            drug_protein,drug_protein_norm,
-                                                            drug_human,drug_human_norm,
-                                                            drug_drug,drug_drug_norm,
-                                                            human_human,human_human_norm,
-                                                            human_human_integration,human_human_integration_norm,
-                                                            human_drug,human_drug_norm,
-                                                            human_virus,human_virus_norm,
-                                                            virus_virus,virus_virus_norm,
-                                                            virus_human,virus_human_norm,
-                                                            protein_drug,protein_drug_norm,
-                                                            drug_protein_mask,
-                                                            optimizer)
+                train_loss,results= train_step(
+                                        model,
+                                        drug_protein,drug_protein_norm,
+                                        drug_human,drug_human_norm,
+                                        drug_drug,drug_drug_norm,
+                                        human_human,human_human_norm,
+                                        human_human_integration,human_human_integration_norm,
+                                        human_drug,human_drug_norm,
+                                        human_virus,human_virus_norm,
+                                        virus_virus,virus_virus_norm,
+                                        virus_human,virus_human_norm,
+                                        protein_drug,protein_drug_norm,
+                                        drug_protein_mask,
+                                        optimizer)
             if args.model == 'HNM':
                 train_loss,W_hd,W_dv = model(torch.from_numpy(drug_protein).to(device),torch.from_numpy(drug_protein_norm).to(device),
                                     torch.from_numpy(drug_human).to(device),torch.from_numpy(drug_human_norm).to(device),
@@ -255,8 +247,6 @@ if __name__ == '__main__':
                     ground_truth.append(ele[2])
                 valid_auc = roc_auc_score(ground_truth, pred_list)
                 valid_aupr = average_precision_score(ground_truth, pred_list)
-                # test_auc = 0
-                # test_aupr = 0
                 if valid_aupr >= best_valid_aupr:
                     best_valid_aupr = valid_aupr
                     best_valid_auc = valid_auc
