@@ -186,11 +186,14 @@ if __name__ == '__main__':
     protein_drug = drug_protein.T
     drug_protein_norm = row_normalize(drug_protein,False)
     protein_drug_norm = row_normalize(protein_drug,False)
-    if args.model == 'NeoDTI':
-        for step in range(args.numsteps):
-            start = time.time()
-            # print("Hello World!")
-            # print(drug_drug)
+    #用于HNM的初始化
+    W_hd = torch.from_numpy(human_drug_norm).clone().to(device)
+    W_dv = torch.from_numpy(drug_protein_norm*drug_protein_mask).clone().to(device)
+    for step in range(args.numsteps):
+        start = time.time()
+        # print("Hello World!")
+        # print(drug_drug)
+        if args.model == 'NeoDTI':
             train_loss,train_acc,train_auc,train_aupr,results= train_step(
                                                         model,
                                                         drug_protein,drug_protein_norm,
@@ -205,40 +208,8 @@ if __name__ == '__main__':
                                                         protein_drug,protein_drug_norm,
                                                         drug_protein_mask,
                                                         optimizer)
-            train_list = []
-            train_truth = []
-            for ele in train_set:
-                train_list.append(results[ele[0],ele[1]])
-                train_truth.append(ele[2])
-            train_auc = roc_auc_score(train_truth,train_list)
-            train_aupr = average_precision_score(train_truth, train_list)
-            print('Train auc aupr', train_auc,train_aupr)
-
-            if step % 1 == 0:
-                print('Step',step,'Total loss',train_loss)
-                pred_list = []
-                ground_truth = []
-                for ele in valid_set:
-                    pred_list.append(results[ele[0],ele[1]])
-                    ground_truth.append(ele[2])
-                valid_auc = roc_auc_score(ground_truth, pred_list)
-                valid_aupr = average_precision_score(ground_truth, pred_list)
-                # test_auc = 0
-                # test_aupr = 0
-                if valid_aupr >= best_valid_aupr:
-                    best_valid_aupr = valid_aupr
-                    best_valid_auc = valid_auc
-                    pred_list = []
-                    ground_truth = []
-                    for ele in test_set:
-                        pred_list.append(results[ele[0],ele[1]])
-                        ground_truth.append(ele[2])
-                    test_auc = roc_auc_score(ground_truth, pred_list)
-                    test_aupr = average_precision_score(ground_truth, pred_list)
-                print('Valid auc aupr,', valid_auc, valid_aupr)
-                print('Test auc aupr', test_auc, test_aupr)
-    if args.model == 'HNM':
-        results = model(torch.from_numpy(drug_protein).to(device),torch.from_numpy(drug_protein_norm).to(device),
+        if args.model == 'HNM':
+            train_loss,W_hd,W_dv = model(torch.from_numpy(drug_protein).to(device),torch.from_numpy(drug_protein_norm).to(device),
                                 torch.from_numpy(drug_human).to(device),torch.from_numpy(drug_human_norm).to(device),
                                 torch.from_numpy(drug_drug).to(device),torch.from_numpy(drug_drug_norm).to(device),
                                 torch.from_numpy(human_human).to(device),torch.from_numpy(human_human_norm).to(device),
@@ -248,7 +219,8 @@ if __name__ == '__main__':
                                 torch.from_numpy(virus_virus).to(device),torch.from_numpy(virus_virus_norm).to(device),
                                 torch.from_numpy(virus_human).to(device),torch.from_numpy(virus_human_norm).to(device),
                                 torch.from_numpy(protein_drug).to(device),torch.from_numpy(protein_drug_norm).to(device),
-                                torch.from_numpy(drug_protein_mask).to(device))
+                                torch.from_numpy(drug_protein_mask).to(device),W_hd,W_dv)
+            results = W_dv
         train_list = []
         train_truth = []
         for ele in train_set:
@@ -257,26 +229,27 @@ if __name__ == '__main__':
         train_auc = roc_auc_score(train_truth,train_list)
         train_aupr = average_precision_score(train_truth, train_list)
         print('Train auc aupr', train_auc,train_aupr)
-        pred_list = []
-        ground_truth = []
-        for ele in valid_set:
-            pred_list.append(results[ele[0],ele[1]])
-            ground_truth.append(ele[2])
-        valid_auc = roc_auc_score(ground_truth, pred_list)
-        valid_aupr = average_precision_score(ground_truth, pred_list)
-        # test_auc = 0
-        # test_aupr = 0
-        if valid_aupr >= best_valid_aupr:
-            best_valid_aupr = valid_aupr
-            best_valid_auc = valid_auc
+
+        if step % 1 == 0:
+            print('Step',step,'Total loss',train_loss)
             pred_list = []
             ground_truth = []
-            for ele in test_set:
+            for ele in valid_set:
                 pred_list.append(results[ele[0],ele[1]])
                 ground_truth.append(ele[2])
-            test_auc = roc_auc_score(ground_truth, pred_list)
-            test_aupr = average_precision_score(ground_truth, pred_list)
-        print('Valid auc aupr,', valid_auc, valid_aupr)
-        print('Test auc aupr', test_auc, test_aupr)
-
-
+            valid_auc = roc_auc_score(ground_truth, pred_list)
+            valid_aupr = average_precision_score(ground_truth, pred_list)
+            # test_auc = 0
+            # test_aupr = 0
+            if valid_aupr >= best_valid_aupr:
+                best_valid_aupr = valid_aupr
+                best_valid_auc = valid_auc
+                pred_list = []
+                ground_truth = []
+                for ele in test_set:
+                    pred_list.append(results[ele[0],ele[1]])
+                    ground_truth.append(ele[2])
+                test_auc = roc_auc_score(ground_truth, pred_list)
+                test_aupr = average_precision_score(ground_truth, pred_list)
+            print('Valid auc aupr,', valid_auc, valid_aupr)
+            print('Test auc aupr', test_auc, test_aupr)

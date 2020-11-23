@@ -111,26 +111,26 @@ class NeoDTI(nn.Module):
         # print("Hi")
 
         self.drug_drug_reconstruct = self.bi_layer(self.drug_representation,self.drug_representation, sym=True, dim_pred=512)
-        self.drug_drug_reconstruct_loss = torch.sum(torch.multiply((self.drug_drug_reconstruct- drug_drug), (self.drug_drug_reconstruct-drug_drug)))
+        self.drug_drug_reconstruct_loss = torch.sum(torch.multiply((self.drug_drug_reconstruct- drug_drug_norm), (self.drug_drug_reconstruct-drug_drug_norm)))
 
         self.virus_virus_reconstruct = self.bi_layer(self.virus_representation,self.virus_representation, sym=True, dim_pred=512)
-        self.virus_virus_reconstruct_loss = torch.sum(torch.multiply((self.virus_virus_reconstruct- virus_virus), (self.virus_virus_reconstruct-virus_virus)))
+        self.virus_virus_reconstruct_loss = torch.sum(torch.multiply((self.virus_virus_reconstruct- virus_virus_norm), (self.virus_virus_reconstruct-virus_virus_norm)))
 
         self.human_human_reconstruct = self.bi_layer(self.human_representation,self.human_representation, sym=True, dim_pred=512)
-        self.human_human_reconstruct_loss = torch.sum(torch.multiply((self.human_human_reconstruct-human_human),(self.human_human_reconstruct-human_human)))
+        self.human_human_reconstruct_loss = torch.sum(torch.multiply((self.human_human_reconstruct-human_human_norm),(self.human_human_reconstruct-human_human_norm)))
 
         self.human_human_in_reconstruct = self.bi_layer(self.human_representation,self.human_representation, sym=True, dim_pred=512)
-        self.human_human_in_reconstruct_loss = torch.sum(torch.multiply((self.human_human_in_reconstruct-human_human_integration),(self.human_human_in_reconstruct-human_human_integration)))
+        self.human_human_in_reconstruct_loss = torch.sum(torch.multiply((self.human_human_in_reconstruct-human_human_integration_norm),(self.human_human_in_reconstruct-human_human_integration_norm)))
 
         self.virus_human_reconstruct = self.bi_layer(self.virus_representation,self.human_representation,sym=False,dim_pred=512)
-        self.virus_human_reconstruct_loss = torch.sum(torch.multiply((self.virus_human_reconstruct - virus_human),(self.virus_human_reconstruct - virus_human)))
+        self.virus_human_reconstruct_loss = torch.sum(torch.multiply((self.virus_human_reconstruct - virus_human_norm),(self.virus_human_reconstruct - virus_human_norm)))
 
         self.drug_human_reconstruct = self.bi_layer(self.drug_representation,self.human_representation,sym=False,dim_pred=512)
-        self.drug_human_reconstruct_loss = torch.sum(torch.multiply((self.drug_human_reconstruct - drug_human),(self.drug_human_reconstruct - drug_human)))
+        self.drug_human_reconstruct_loss = torch.sum(torch.multiply((self.drug_human_reconstruct - drug_human_norm),(self.drug_human_reconstruct - drug_human_norm)))
         # print(self.drug_drug_reconstruct)
         # print(drug_drug)
         self.drug_protein_reconstruct = self.bi_layer(self.drug_representation,self.virus_representation, sym=False, dim_pred=512)
-        tmp = torch.multiply(drug_protein_mask, (self.drug_protein_reconstruct-drug_protein))
+        tmp = torch.multiply(drug_protein_mask, (self.drug_protein_reconstruct-drug_protein_norm))
         self.drug_protein_reconstruct_loss = torch.sum(torch.multiply(tmp, tmp))
 
 
