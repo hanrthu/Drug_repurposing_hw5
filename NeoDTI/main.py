@@ -107,7 +107,7 @@ if __name__ == '__main__':
     #参数输入和设备选取
     parser = argparse.ArgumentParser()
     parser.add_argument('--dim',type=int,default=1024,help='Dim of embeddings')	
-    parser.add_argument('--numsteps',type=int,default=5,help='Num of epochs')
+    parser.add_argument('--numsteps',type=int,default=20,help='Num of epochs')
     parser.add_argument('--learning_rate',type=int,default=0.01,help='Learning rate')
     parser.add_argument('--ratio',type=int,default=1,help='Negative-Positive ratio')
     parser.add_argument('--model',type=str,default='NeoDTI',help='Choose a model')
@@ -173,7 +173,7 @@ if __name__ == '__main__':
     #训练集和测试集的划分
     train_set,valid_set,test_set = dataset_split(drug_virus)
     data_set = train_set + valid_set + test_set
-    print(data_set)
+    # print(data_set)
     rs = np.random.randint(0,1000,1)[0]
     y = []
     for i in data_set:
@@ -185,8 +185,8 @@ if __name__ == '__main__':
     k_fold_aupr = []
     for train_index, test_index in kf:
         #训练并测试
-        print(train_index)
-        print(test_index)
+        # print(train_index)
+        # print(test_index)
         count += 1
         print("Fold ",count)
         train_set = np.array(data_set)[train_index]
