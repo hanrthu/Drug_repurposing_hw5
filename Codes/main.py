@@ -152,7 +152,7 @@ if __name__ == '__main__':
     virus_human_norm = row_normalize(virus_human,False)
     virus_drug_norm = row_normalize(virus_drug,False)
     #Model的定义
-    if args.model == 'NeoDTI' or 'NeoDTI_nCov':
+    if args.model == 'NeoDTI' or args.model == 'NeoDTI_nCov':
         print('Using Model:\t',args.model)
         dim = args.dim
         if args.model == 'NeoDTI':
@@ -205,7 +205,7 @@ if __name__ == '__main__':
         for step in range(args.numsteps):
             start = time.time()
             #根据模型进行训练
-            if args.model == 'NeoDTI' or 'NeoDTI_nCov':
+            if args.model == 'NeoDTI' or args.model == 'NeoDTI_nCov':
                 train_loss,results= train_step(
                                         model,
                                         drug_protein,drug_protein_norm,
