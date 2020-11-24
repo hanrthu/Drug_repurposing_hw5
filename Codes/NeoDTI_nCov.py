@@ -153,7 +153,7 @@ class NeoDTI(nn.Module):
             torch.matmul(human_virus_norm, self.hv_layer(self.virus_embedding)),\
             self.human_embedding], axis=1), self.W0)+self.b0),dim=1)
 
-        self.combined_embedding1 = torch.cat(self.virus_vector1,self.human_vector1,axis=0)
+        self.combined_embedding1 = torch.cat((self.virus_vector1,self.human_vector1),axis=0)
 
         self.drug_representation =  F.normalize(F.relu(torch.matmul(
             torch.cat([torch.matmul(drug_drug_norm, self.dd_layer2(self.drug_vector1)) + \
@@ -175,7 +175,7 @@ class NeoDTI(nn.Module):
             self.human_vector1], axis=1), self.W1)+self.b1),dim=1)
 
 
-        self.combined_representation = torch.cat(self.virus_representation,self.human_representation,axis=0)
+        self.combined_representation = torch.cat((self.virus_representation,self.human_representation),axis=0)
         # print(human_vector1.shape)
 
         self.drug_drug_reconstruct = self.bi_layer(self.drug_representation,self.drug_representation, sym=True, dim_pred=512)

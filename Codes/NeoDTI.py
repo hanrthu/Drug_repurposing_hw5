@@ -111,7 +111,7 @@ class NeoDTI(nn.Module):
             self.human_embedding], axis=1), self.W0)+self.b0),dim=1)
         # print(human_vector1.shape)
 
-        self.combined_representation = torch.cat(self.virus_representation,self.human_representation,axis=0)
+        self.combined_representation = torch.cat((self.virus_representation,self.human_representation),axis=0)
 
 
         self.drug_drug_reconstruct = self.bi_layer(self.drug_representation,self.drug_representation, sym=True, dim_pred=512)
