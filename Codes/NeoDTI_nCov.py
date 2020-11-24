@@ -117,10 +117,10 @@ class NeoDTI_nCov(nn.Module):
             nn.ReLU()
         )
         
-        self.final_layer = nn.Sequential(
-            nn.Linear(self.num_virus+self.num_human,self.num_virus),
-            nn.ReLU()
-        )
+        # self.final_layer = nn.Sequential(
+        #     nn.Linear(self.num_virus+self.num_human,self.num_virus),
+        #     nn.ReLU()
+        # )
 
     def bi_layer(self,x0,x1,sym,dim_pred):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -186,7 +186,7 @@ class NeoDTI_nCov(nn.Module):
             self.human_vector1], axis=1), self.W1)+self.b1),dim=1)
 
 
-        self.combined_representation = torch.cat((self.virus_representation,self.human_representation),axis=0)
+        # self.combined_representation = torch.cat((self.virus_representation,self.human_representation),axis=0)
         # print(human_vector1.shape)
 
         self.drug_drug_reconstruct = self.bi_layer(self.drug_representation,self.drug_representation, sym=True, dim_pred=512)
@@ -207,13 +207,13 @@ class NeoDTI_nCov(nn.Module):
         self.drug_human_reconstruct = self.bi_layer(self.drug_representation,self.human_representation,sym=False,dim_pred=512)
         self.drug_human_reconstruct_loss = torch.sum(torch.multiply((self.drug_human_reconstruct - drug_human),(self.drug_human_reconstruct - drug_human)))
 
-        self.drug_protein_reconstruct = self.bi_layer(self.drug_representation,self.combined_representation, sym=False, dim_pred=512)
-        self.drug_protein_reconstruct = self.final_layer(self.drug_protein_reconstruct)
+        self.drug_protein_reconstruct = self.bi_layer(self.drug_representation,self.virus_representation, sym=False, dim_pred=512)
+        # self.drug_protein_reconstruct = self.final_layer(self.drug_protein_reconstruct)
         # print(self.drug_protein_reconstruct.shape)
         tmp = torch.multiply(drug_protein_mask, (self.drug_protein_reconstruct-drug_protein))
         self.drug_protein_reconstruct_loss = torch.sum(torch.multiply(tmp, tmp))
 
-        loss = self.drug_protein_reconstruct_loss + 1.0* (self.virus_virus_reconstruct_loss / virus_virus.shape[0] + \
+        loss = self.drug_protein_reconstruct_loss + 0.1* (self.virus_virus_reconstruct_loss / virus_virus.shape[0] + \
             self.human_human_reconstruct_loss / human_human.shape[0] + self.drug_drug_reconstruct_loss / drug_drug.shape[0] + \
             self.human_human_in_reconstruct_loss / human_human.shape[0] + self.virus_human_reconstruct_loss / virus_human.shape[0]+\
             self.drug_human_reconstruct_loss / drug_human.shape[0])
