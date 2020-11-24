@@ -6,9 +6,12 @@ import torch.nn.functional as F
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import average_precision_score
 
-class NeoDTI(nn.Module):
+class NeoDTI_nCov(nn.Module):
     def __init__(self, num_drug, num_human, num_virus, dim):
-        super(NeoDTI, self).__init__()
+        super(NeoDTI_nCov, self).__init__()
+        self.num_drug = num_drug
+        self.num_human = num_human
+        self.num_virus = num_virus
         # self.drug_embedding = Parameter(torch.normal(mean=torch.zeros([num_drug,dim]),std=0.1))
         self.drug_embedding = Parameter(torch.zeros((num_drug,dim)))
         # self.human_embedding = Parameter(torch.normal(mean=torch.zeros([num_human,dim]),std=0.1))
@@ -17,15 +20,20 @@ class NeoDTI(nn.Module):
         self.virus_embedding = Parameter(torch.zeros((num_virus,dim)))
         # self.W0 = Parameter(torch.normal(mean=torch.zeros([2*dim,dim]),std=0.1))
         self.W0 = Parameter(torch.zeros((2*dim,dim)))
-        self.b0 = Parameter(torch.normal(mean=torch.zeros([dim]),std=0.1))
+        self.b0 = torch.zeros((1,dim))
         self.W1 = Parameter(torch.zeros((2*dim,dim)))
-        self.W2 = Parameter(torch.normal(mean=torch.zeros([dim]),std=0.1))
+        self.b1 = torch.zeros((1,dim))
         # self.b0 = Parameter(torch.zeros([dim]))
         init.xavier_normal_(self.drug_embedding)
         init.xavier_normal_(self.human_embedding)
         init.xavier_normal_(self.virus_embedding)
         init.xavier_normal_(self.W0)
-        # init.xavier_normal_(self.b0)
+        init.xavier_normal_(self.W1)
+        init.xavier_normal_(self.b0)
+        init.xavier_normal_(self.b1)
+
+        self.b0 = Parameter(torch.squeeze(self.b0))
+        self.b1 = Parameter(torch.squeeze(self.b1))
 
         self.dd_layer = nn.Sequential(
             nn.Linear(dim,dim,bias=True),
@@ -108,6 +116,11 @@ class NeoDTI(nn.Module):
             nn.Linear(dim,dim,bias=True),
             nn.ReLU()
         )
+        
+        self.final_layer = nn.Sequential(
+            nn.Linear(self.num_virus+self.num_human,self.num_virus),
+            nn.ReLU()
+        )
 
     def bi_layer(self,x0,x1,sym,dim_pred):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -153,12 +166,10 @@ class NeoDTI(nn.Module):
             torch.matmul(human_virus_norm, self.hv_layer(self.virus_embedding)),\
             self.human_embedding], axis=1), self.W0)+self.b0),dim=1)
 
-        self.combined_embedding1 = torch.cat((self.virus_vector1,self.human_vector1),axis=0)
-
         self.drug_representation =  F.normalize(F.relu(torch.matmul(
             torch.cat([torch.matmul(drug_drug_norm, self.dd_layer2(self.drug_vector1)) + \
-            torch.matmul(drug_protein_norm, self.dv_layer2(self.combined_embedding1)) + \
-            torch.matmul(drug_human_norm, self.dh_layer2(self.self.human_vector1)),\
+            torch.matmul(drug_protein_norm, self.dv_layer2(self.virus_vector1)) + \
+            torch.matmul(drug_human_norm, self.dh_layer2(self.human_vector1)),\
             self.drug_vector1], axis=1), self.W1)+self.b1),dim=1)
 
         self.virus_representation  = F.normalize(F.relu(torch.matmul(
@@ -170,7 +181,7 @@ class NeoDTI(nn.Module):
         self.human_representation = F.normalize(F.relu(torch.matmul(
             torch.cat([torch.matmul(human_human_norm, self.hh_layer2(self.human_vector1)) + \
             torch.matmul(human_human_integration_norm, self.hhi_layer2(self.human_vector1)) + \
-            torch.matmul(human_drug_norm, self.hd_layer2(self.drug_veecotr1)) + \
+            torch.matmul(human_drug_norm, self.hd_layer2(self.drug_vector1)) + \
             torch.matmul(human_virus_norm, self.hv_layer2(self.virus_vector1)),\
             self.human_vector1], axis=1), self.W1)+self.b1),dim=1)
 
@@ -197,6 +208,8 @@ class NeoDTI(nn.Module):
         self.drug_human_reconstruct_loss = torch.sum(torch.multiply((self.drug_human_reconstruct - drug_human),(self.drug_human_reconstruct - drug_human)))
 
         self.drug_protein_reconstruct = self.bi_layer(self.drug_representation,self.combined_representation, sym=False, dim_pred=512)
+        self.drug_protein_reconstruct = self.final_layer(self.drug_protein_reconstruct)
+        # print(self.drug_protein_reconstruct.shape)
         tmp = torch.multiply(drug_protein_mask, (self.drug_protein_reconstruct-drug_protein))
         self.drug_protein_reconstruct_loss = torch.sum(torch.multiply(tmp, tmp))
 

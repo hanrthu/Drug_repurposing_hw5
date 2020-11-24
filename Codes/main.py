@@ -8,6 +8,7 @@ from sklearn.metrics import average_precision_score
 from sklearn.model_selection import train_test_split,StratifiedKFold
 # from sklearn.cross_validation import train_test_split,StratifiedKFold
 from NeoDTI import NeoDTI
+from NeoDTI_nCov import NeoDTI_nCov
 from HNM import HNM
 
 def row_normalize(a_matrix, substract_self_loop):
@@ -151,10 +152,13 @@ if __name__ == '__main__':
     virus_human_norm = row_normalize(virus_human,False)
     virus_drug_norm = row_normalize(virus_drug,False)
     #Model的定义
-    if args.model == 'NeoDTI':
-        print('Using Model:\tNeoDTI')
+    if args.model == 'NeoDTI' or 'NeoDTI_nCov':
+        print('Using Model:\t',args.model)
         dim = args.dim
-        model = NeoDTI(num_drug,num_human,num_virus,dim)
+        if args.model == 'NeoDTI':
+            model = NeoDTI(num_drug,num_human,num_virus,dim)
+        else:
+            model = NeoDTI_nCov(num_drug,num_human,num_virus,dim)
         model = model.double()
         model.to(device)
         optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
@@ -201,7 +205,7 @@ if __name__ == '__main__':
         for step in range(args.numsteps):
             start = time.time()
             #根据模型进行训练
-            if args.model == 'NeoDTI':
+            if args.model == 'NeoDTI' or 'NeoDTI_nCov':
                 train_loss,results= train_step(
                                         model,
                                         drug_protein,drug_protein_norm,
