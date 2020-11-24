@@ -3,6 +3,7 @@ import torch
 import argparse
 import time
 import torch.optim as optim
+import pickle
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import average_precision_score
 from sklearn.model_selection import train_test_split,StratifiedKFold
@@ -181,6 +182,7 @@ if __name__ == '__main__':
 
     k_fold_auc = []
     k_fold_aupr = []
+    final_dict = {}
     #10-fold cross-validation
     for train_index, test_index in kf:
         #训练并测试
@@ -261,6 +263,32 @@ if __name__ == '__main__':
                         ground_truth.append(ele[2])
                     test_auc = roc_auc_score(ground_truth, pred_list)
                     test_aupr = average_precision_score(ground_truth, pred_list)
+                    if count == 10:
+                        f = open('../DTI-data/virusseq_add_ncov.pkl','rb')
+                        lines = f.read()
+                        print(lines)
+                        virus_dict = pickle.loads(lines)
+                        candidates = ['sp|P0DTC1|R1A_WCPV','sp|P0DTC2|SPIKE_WCPV','sp|P0DTC3|AP3A_WCPV','sp|P0DTC4|VEMP_WCPV','sp|P0DTC5|VME1_WCPV',\
+                            'sp|P0DTC6|NS6_WCPV','sp|P0DTC7|NS7A_WCPV','sp|P0DTC8|NS8_WCPV','sp|P0DTC9|NCAP_WCPV','sp|P0DTD1|R1AB_WCPV',\
+                            'sp|P0DTD2|ORF9B_WCPV','sp|P0DTD3|Y14_WCPV','sp|P0DTD8|NS7B_WCPV','tr|A0A663DJA2|A0A663DJA2_9BETC']
+                        for item in candidates:
+                            index = virus_dict[item]
+                            print(index)
+                            predicted = results[:,index].cpu().data.numpy()
+                            argsort = np.argsort(predicted)[::-1]
+                            print("Prediction of %s:" %(item), argsort[:10])
+                            final_dict['item'] = argsort[:10]
+                        f = open('./predict.pkl','wb')
+                        pickle.dump(final_dict,f)
+                        # Replicase_polyprotein_1a = results[:,158].cpu().data.numpy()
+                        # Spike_glycoprotein = results[:,45].cpu().data.numpy()
+                        # Protein_3a = results[:,246].cpu().data.numpy()
+                        # a1 = np.argsort(Replicase_polyprotein_1a)[::-1]
+                        # a2 = np.argsort(Spike_glycoprotein)[::-1]
+                        # a3 = np.argsort(Protein_3a)[::-1]
+                        # print("Prediction of Replicase_polyprotein_1a:", a1[:10])
+                        # print("Prediction of Spike_glycoprotein:", a2[:10])
+                        # print("Prediction of Protein_3a:", a3[:10])
                 print('Valid auc aupr,', valid_auc, valid_aupr)
                 print('Test auc aupr', test_auc, test_aupr)
         k_fold_auc.append(test_auc)
