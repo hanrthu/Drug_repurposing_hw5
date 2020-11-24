@@ -133,7 +133,7 @@ class NeoDTI(nn.Module):
         tmp = torch.multiply(drug_protein_mask, (self.drug_protein_reconstruct-drug_protein))
         self.drug_protein_reconstruct_loss = torch.sum(torch.multiply(tmp, tmp))
 
-        loss = self.drug_protein_reconstruct_loss + 0.1* (self.virus_virus_reconstruct_loss / virus_virus.shape[0] + \
+        loss = self.drug_protein_reconstruct_loss + 1.0* (self.virus_virus_reconstruct_loss / virus_virus.shape[0] + \
             self.human_human_reconstruct_loss / human_human.shape[0] + self.drug_drug_reconstruct_loss / drug_drug.shape[0] + \
             self.human_human_in_reconstruct_loss / human_human.shape[0] + self.virus_human_reconstruct_loss / virus_human.shape[0]+\
             self.drug_human_reconstruct_loss / drug_human.shape[0])
