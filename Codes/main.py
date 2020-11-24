@@ -277,7 +277,7 @@ if __name__ == '__main__':
                             predicted = results[:,index].cpu().data.numpy()
                             argsort = np.argsort(predicted)[::-1]
                             print("Prediction of %s:" %(item), argsort[:10])
-                            final_dict['item'] = argsort[:10]
+                            final_dict[item] = argsort[:10]
                         f = open('./predict.pkl','wb')
                         pickle.dump(final_dict,f)
                         # Replicase_polyprotein_1a = results[:,158].cpu().data.numpy()
